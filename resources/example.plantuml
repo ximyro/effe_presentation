@@ -1,0 +1,80 @@
+@startuml Finish Order flow
+start 
+:Begin transaction;
+
+if (returns an error?) then
+ :Failure Flow;
+ stop
+else
+    :Change order state to "finished";
+        if (returns an error?) then
+            :Rollback; 
+            :Failure Flow;
+            stop
+        else
+            :Recalculate order price;
+             if (returns an error?) then
+                :Rollback;
+                :Failure Flow;
+                stop
+             else
+                :Write off the user's coupons ;
+                if (returns an error?) then
+                    :Rollback;
+                    :Failure Flow;
+                    stop
+                else
+                    :Charge user's credit card;
+                    if (returns an error?) then
+                        :Rollback;
+                        :Failure Flow;
+                        stop
+                    else
+                        :Commit transaction;
+                        end
+                    endif
+                endif
+             endif
+        endif
+endif
+@enduml
+
+
+@startuml Diagram of packages
+(*) -right-> "A"
+-right-> "B"
+-right-> "C"
+-right-> "D"
+@enduml
+
+@startuml Left example
+- buildUserFromRequest
+- validateUser
+- createUser
+- createCustomer
+- sendNotification
+@enduml
+
+@startuml Right example
+- buildUserFromRequest
+- validateUser
+- findUserByID
+- updateUser
+- updateCustomer
+- sendNotification
+@enduml
+
+
+@startuml Business Logic
+cloud BusinessLogic {
+    component ComponentA {
+        card step1
+        card step2
+    }
+
+    component ComponentB {
+        card step3
+        card step4
+    }
+}
+@endml

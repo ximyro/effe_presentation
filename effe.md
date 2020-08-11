@@ -141,6 +141,9 @@ section.last > ul > li {
   float: left;
   width: 50%;
 }
+section.last > ul > li > ul  {
+    padding-left: 0;
+}
 
 .inline-block {
     flex: 50%;
@@ -207,11 +210,6 @@ Buzlov Ilya | 2020.08.09
 ---
 <!-- _class: white -->
 
-![](img/definitions.png)
-
----
-<!-- _class: white -->
-
 ![bg fit](img/example_1.png)
 
 ---
@@ -261,60 +259,6 @@ func (o *OrderFinishedUseCase) Do(ctx context.Context, order Order) error {
 ![](img/example_2.png)
 
 ![](img/explain.jpg)
-
----
-<!-- _class: half list -->
-
-<div class="inline-block">
-
-## Steps
-
-</div>
-
-<div class="inline-block">
-
-- Write code
-- Write a test for step
-- Write a test for use case
-- Find a place
-- Inject you code
-
-</div>
-
----
-<!-- _class: half list -->
-
-<div class="inline-block">
-
-## Easy
-
-</div>
-
-<div class="inline-block">
-
-- Write code
-- Write a test for step
-
-</div>
-
----
-
-<!-- _class: half list not_easy -->
-
-<div class="inline-block">
-
-## Not easy
-
-</div>
-
-<div class="inline-block">
-
-- Find a place
-- Inject you code
-
-![](img/example_3.png)
-
-</div>
 
 ---
 <!-- _class: white -->
@@ -510,11 +454,13 @@ type BuildCreateUserFlowService interface {
 <!-- _class: white -->
 
 ```go
-serviceMock := mocks.NewMockBuildCallbackFlowService(ctrl)
-callbackHandleFunc := BuildCallbackFlow(serviceMock)
-serviceMock.EXPECT().BuildUser(uAttrs).Return(User{})
-serviceMock.EXPECT().CreateUser(User).Return(nil)
-err := callbackHandleFunc(ctx, zoozRequest)
+
+u := User{}
+serviceMock := mocks.NewBuildCreateUserFlow(ctrl)
+createUserFlow := BuildCreateUserFlow(serviceMock)
+serviceMock.EXPECT().BuildUser(uAttrs).Return(u)
+serviceMock.EXPECT().CreateUser(u).Return(nil)
+err := createUserFlow(ctx, zoozRequest)
 assert.NoError(t, err)
 ```
 
@@ -591,19 +537,19 @@ func BuildCreateUserFlow(uAttrs UserAttributes) error {
 err16 := func(ctx context.Context, user User) error {
   transaction err15 := service.BeginTransaction(ctx)
   if err15 != nil {
-    err15 = service.rollbackTransaction(ctx, err15, transaction)
+    err15 = service.RollbackTransaction(ctx, err15, transaction)
     return errors.Wrap(err15, "failed beginTransaction")
   }
 
   err14 := service.CreateUser(ctx, user)
   if err != nil {
-    err14 = service.rollbackTransaction(ctx, err15, transaction)
+    err14 = service.RollbackTransaction(ctx, err15, transaction)
     return errors.Wrap(err14, "failed createUser")
   }
 
   err13 := service.CommitTransaction(transaction)
   if err != nil {
-    err13 = service.rollbackTransaction(ctx, err13, transaction)
+    err13 = service.RollbackTransaction(ctx, err13, transaction)
     return  errors.Wrap(err13, "failed commitTransaction")
   }
   return nil
@@ -707,31 +653,11 @@ func BuildCreateUserFlow(service BuildCreateUserFlowService) BuildCreateUserFlow
         UserVal := service.BuildUser(uAttrs)
         err := service.CreateUser(ctx, UserVal)
         if err != nil {
-            err = handleErr(err)
+            err = service.HandleErr(err)
             return errors.Wrap(err, "failed createUser")
         }
     return nil
     }
-}
-```
-
----
-<!-- _class: white -->
-
-## Wrap
-
-```go
-func BuildCreateUserFlow(uAttrs UserAttributes) error {
-    effe.BuildFlow(
-        //...,
-        effe.Wrap(effe.Before(beginTransaction), effe.Success(commitTransaction), effe.Failure(rollbackTransaction),
-            effe.Step(createUser),
-            effe.Step(createUserPermissions),
-            effe.Step(createUserSettings),
-        )
-        //...,
-    )
-    return nil
 }
 ```
 
@@ -749,7 +675,7 @@ func BuildCreateUserFlow(uAttrs UserAttributes) error {
 func BuildMyFlow() error {
     effe.BuildFlow(
         effe.Step(step1),
-        testcustomization.POST(
+        mygenerator.POST(
             "http://example.com",
         ),
     )
@@ -800,7 +726,7 @@ func GenPostRequestComponent(f strategies.FlowGen, c types.Component) (strategie
 ```go
     settings := generator.DefaultSettigs()
     strategy := strategies.NewChain(strategies.WithServiceObjectName(settings.LocalInterfaceVarname()))
-    err := strategy.Register("PostRequestComponent", GenPostRequestComponent)
+    err := strategy.Register("POST", GenPostRequestComponent)
     require.NoError(t, err)
 
     loader := loaders.NewLoader(loaders.WithPackages([]string{"effe", "testcustomization"}))
@@ -812,6 +738,31 @@ func GenPostRequestComponent(f strategies.FlowGen, c types.Component) (strategie
         generator.WithLoader(loader),
         generator.WithStrategy(strategy),
     )
+```
+
+---
+<!-- _class: white -->
+
+```golang
+func C(service CService) CFunc {
+	return func() (*gentleman.Response, error) {
+		err := service.Step1()
+		if err != nil {
+			return nil, err
+		}
+		responsePtrVal, err := func() (*gentleman.Response, error) {
+			cli := gentleman.New()
+			cli.URI("http://example.com")
+			req := cli.Request()
+			req.Method(POST)
+			return cli.Send()
+		}()
+		if err != nil {
+			return responsePtrVal, err
+		}
+		return responsePtrVal, nil
+	}
+}
 ```
 
 ---
@@ -853,7 +804,7 @@ func C() error {
 <!-- _class: block -->
 ![bg cover](img/uml.png)
 
-# UML
+# Diagrams
 
 ---
 <!-- _class: white -->
